@@ -1,0 +1,24 @@
+MEMORY:
+64kB General Memory (G = 0)
+64kB Program Memory (P = 1)
+20kB Screen Memory (V = 2)
+
+CPU-REGISTERS:
+8bit Accumulator (number 0)
+1bit Number Mode
+                       (1, 2, 3, 4, 5, 6, 7, 8)
+8 8bit Index Registers (s, t, u, v, w, x, y, z)
+8bit Stack Pointer
+8bit Memory-Space Pointer (represented by char "m" number 9)
+8bit Status (represented by char "p" number 0xA)
+16bit Program-Counter
+
+PRESERVED CPU STATES:
+0x7f (coded as -0xf) = CPU stopped by program
+0x7e (codes as -0xe) = CPU finished execution
+
+BUS:
+16bit bus (addr, r/w, mem)
+addr = Adress of Data
+r/w  = Read or Write
+mem  = Which memory space
