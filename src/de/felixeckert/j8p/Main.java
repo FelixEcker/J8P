@@ -1,6 +1,7 @@
 package de.felixeckert.j8p;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Scanner;
 
 public class Main {
@@ -46,11 +47,12 @@ public class Main {
         J8P.program[14] = (byte) 0x00;
 
         // JMP #$0
-        J8P.program[15] = 0x1e;
+        J8P.program[15] = 0x21;
         J8P.program[16]  = 0x17;
+        J8P.program[16]  = 0x00;
 
         // END
-        J8P.program[15] = (byte) 63;
+        J8P.program[17] = (byte) 63;
 
         J8P.general[34] = (byte) 0xa8;
 
@@ -60,7 +62,7 @@ public class Main {
             J8P.step();
             J8V.step();
         }
-        J8V.step();
+        J8V.stop();
 
         System.out.println("=======================");
         System.out.println("Register Dump: ");

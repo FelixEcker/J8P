@@ -9,12 +9,20 @@ public class J8V {
     public static byte[] memory = new byte[60 * 1024];
     private static DisplayWindow window;
 
+    public static boolean init = false;
+
     public static void init() {
         window = new DisplayWindow();
+        init   = true;
     }
 
     public static void step() {
         window.render();
+    }
+
+    public static void stop() {
+        window.setVisible(false);
+        window.dispose();
     }
 
     private static class DisplayWindow extends JFrame {

@@ -16,7 +16,7 @@ public class J8P {
 
     // Steps the cpu once
     public static void step() {
-        if (pcounter == 0) {
+        if (pcounter == 0 && !J8V.init) {
             J8V.init();
         }
 
@@ -25,7 +25,7 @@ public class J8P {
             reset();
         }
 
-        if (pcounter != Short.MAX_VALUE || pcounter != plength) {
+        if (pcounter != 64 * 1024 || pcounter != plength) {
             switch (program[pcounter]) {
                 case 0x0:
                     stop();
@@ -124,20 +124,20 @@ public class J8P {
                     break;
                 case 0x1f: // JE
                     if (accumulator == 1) {
-                        pcounter = program[pcounter+1];
+                        pcounter = program[_program16BitAddress()];
                     } else {
-                        pcounter += 2;
+                        pcounter += 3;
                     }
                     break;
                 case 0x20: // JNE
                     if (accumulator == 0) {
-                        pcounter = program[pcounter+1];
+                        pcounter = program[_program16BitAddress()];
                     } else {
-                        pcounter += 2;
+                        pcounter += 3;
                     }
                     break;
                 case 0x21: // JMP
-                    pcounter = program[pcounter+1];
+                    pcounter = program[_program16BitAddress()];
                     break;
                 case 63:
                     status = 0x7e;
@@ -176,14 +176,14 @@ public class J8P {
             _loadRegister(0, (byte) 0);
         }
 
-        pcounter += 3;
+        pcounter += 7;
     }
 
     // Pushes 3 Values to 3 Adresses in memory, with only one explicitly specified adress
     // The other adresses are found by incrementing the base adress by 1 and 2.
     // Intended for easily pushing RGB colors for a pixel in the Video RAM.
     public static void pushColor() {
-        int pixel = ((program[pcounter+1] & 0xff) << 8) | ((program[pcounter+2] & 0xff));
+        int pixel = _program16BitAddress();
 
         _pushRegister(1, (pixel & 0xFFFFFF));
         _pushRegister(2, ((pixel + 1) & 0xFFFFFF));
@@ -210,10 +210,7 @@ public class J8P {
     // Loads a register. The actual loading is achieved through the internal function
     // "J8P#_loadRegister(int register, byte value)"
     public static void loadRegister(int register) {
-        short targetAdress = program[pcounter+1];
-        byte value = program[pcounter+2] == 0 ? Bus.operate(targetAdress, (byte)0x0, false, mspptr) : (byte) targetAdress;
-
-        _loadRegister(register, value);
+        _loadRegister(register, _programBytePair()[0]);
 
         pcounter += 3;
     }
@@ -221,12 +218,12 @@ public class J8P {
     // Pushes a Register to a specific place in Memory
     // Uses internal function "J8P#_pushRegister(int register, short address)"
     public static void pushRegister(int register) {
-        _pushRegister(register, program[pcounter+1]);
-        pcounter += 2;
+        _pushRegister(register, _program16BitAddress());
+        pcounter += 3;
     }
 
     // These math instructions grab their values in the same way
-    // the contents in the adress "pcounter+1" of the program rom
+    // the contents in the address "pcounter+1" of the program rom
     // specify the 1st address/value. It is followed by a byte which
     // is either 1 or 0. 0 Tells it that it is a value in memory
     // 1 tells it that the contents at "pcounter+1" are to be interpreted
@@ -235,7 +232,6 @@ public class J8P {
     // So the assembly code "ADD #$f #$e" (15+14) would look like this in binary
     // 18 f 1 e 1
     public static void add() {
-
         byte[] vs = _programBytePair();
         _loadRegister(0, (byte) (vs[0]+vs[1]));
     }
@@ -267,15 +263,33 @@ public class J8P {
     /////////////////////////////////////////////////////////////
 
     // Returns a pair of byte from the program memory, relative to the
-    // program counter. (byte 1 location = pcounter+1 ; byte 2 location = pcounter+2)
-    private static byte[] _programBytePair() {
-        short targetAdress = program[pcounter+1];
-        byte value1 = program[pcounter+2] == 0 ? Bus.operate(targetAdress, (byte)0x0, false, mspptr) : (byte) targetAdress;
+    // program counter. (byte 1 location = pcounter+1 & +2 ; byte 2 location = pcounter+4 & +5)
+    public static byte[] _programBytePair() {
+        // These booleans tell if the values at the memory space are address pointers or values.
+        boolean address1 = program[pcounter+3] == 0;
+        boolean address2 = program[pcounter+6] == 0;
 
-        targetAdress = program[pcounter+3];
-        byte value2 = program[pcounter+4] == 0 ? Bus.operate(targetAdress, (byte)0x0, false, mspptr) : (byte) targetAdress;
+        byte[] bytes = new byte[2];
 
-        return new byte[] {value1, value2};
+        if (address1) {
+            bytes[0] = Bus.operate((short) ((program[pcounter+1] << 8) | (program[pcounter+2] & 0xFF)), (byte)0x0, false, mspptr);
+        } else {
+            bytes[0] = program[pcounter+1];
+        }
+
+        if (address2) {
+            bytes[1] = Bus.operate((short) ((program[pcounter+4] << 8) | (program[pcounter+5] & 0xFF)), (byte)0x0, false, mspptr);
+        } else {
+            bytes[1] = program[pcounter+4];
+        }
+
+        return bytes;
+    }
+
+    // Returns a 16 bit memory address relative to the program counter
+    // (byte 1 = pcounter + 1, byte 2 = pcounter + 2)
+    public static short _program16BitAddress() {
+        return (short) ((program[pcounter+1] << 8) | (program[pcounter+2] & 0xFF));
     }
 
     // Internal function for loading a register
