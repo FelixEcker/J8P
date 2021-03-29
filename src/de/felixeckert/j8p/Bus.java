@@ -1,15 +1,13 @@
 package de.felixeckert.j8p;
 
 public class Bus {
-    // This
     public static byte operate(int addr, byte value, boolean rw, byte memspace) {
         if (rw) {
-            System.out.println("MEMSPACE ADRESS: "+memspace);
             switch (memspace) {
                 case 0x0:
                     J8P.general[addr & 0xFFFF] = value;
                     break;
-            // Skip if any Program-ROM space is set
+                // Skip if any Program-ROM space is set
                 case 0x1:
                     return 0x0;
                 case 0x2:

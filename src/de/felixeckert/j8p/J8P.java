@@ -1,5 +1,7 @@
 package de.felixeckert.j8p;
 
+import java.util.Arrays;
+
 public class J8P {
     // REGISTERS
     public static byte accumulator   = 0x0;     // ALU Operation Results, also the results of compare
@@ -25,7 +27,9 @@ public class J8P {
             reset();
         }
 
-        if (pcounter != 64 * 1024 || pcounter != plength) {
+        System.out.println(pcounter);
+
+        if (pcounter != 64 * 1024) {
             switch (program[pcounter]) {
                 case 0x0:
                     stop();
@@ -212,14 +216,14 @@ public class J8P {
     public static void loadRegister(int register) {
         _loadRegister(register, _programBytePair()[0]);
 
-        pcounter += 3;
+        pcounter += 2;
     }
 
     // Pushes a Register to a specific place in Memory
     // Uses internal function "J8P#_pushRegister(int register, short address)"
     public static void pushRegister(int register) {
         _pushRegister(register, _program16BitAddress());
-        pcounter += 3;
+        pcounter += 2;
     }
 
     // These math instructions grab their values in the same way
@@ -244,8 +248,10 @@ public class J8P {
     public static void div() {
         byte[] vs = _programBytePair();
 
+        System.out.println(Arrays.toString(vs));
+
         // Divide by 0 check.
-        if (vs[0] == 0 || vs[1] == 0) {
+        if (vs[1] == 0) {
             status = 0x7d;
             return;
         }

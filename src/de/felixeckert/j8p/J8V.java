@@ -17,7 +17,9 @@ public class J8V {
     }
 
     public static void step() {
-        window.render();
+        if (window.isVisible() && window.isDisplayable()) {
+            window.render();
+        }
     }
 
     public static void stop() {
@@ -39,7 +41,7 @@ public class J8V {
             canvas.setSize(160 * 10, 120 * 10);
 
             add(canvas);
-            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
             setVisible(true);
         }
 
