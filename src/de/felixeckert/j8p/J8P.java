@@ -10,7 +10,10 @@ public class J8P {
     public static byte mspptr = 0x0;            // Memory Space Pointer
     public static byte status = 0x0;            // CPU Status
     public static short pcounter = 0;           // Program Counter
-    public static short plength  = 0;           // Program length
+
+    // Stack for Subroutines. Can be manipulated with SPOP SPUS and SPEE- instructions.
+    public static short[] calstk = new short[1024];
+    public static short   stkptr = 0;
 
     // MEMORY
     public static byte[] program = new byte[64 * 1024];
@@ -26,8 +29,6 @@ public class J8P {
             System.err.println("Program error at Instruction: "+pcounter);
             reset();
         }
-
-        System.out.println(pcounter);
 
         if (pcounter != 64 * 1024) {
             switch (program[pcounter]) {
@@ -143,6 +144,28 @@ public class J8P {
                 case 0x21: // JMP
                     pcounter = program[_program16BitAddress()];
                     break;
+                case 0x22: // CAL
+                    pushStack(pcounter);
+                    pcounter = program[pcounter+1];
+                    break;
+                case 0x23: // RET
+                    pcounter = calstk[stkptr];
+                    stkptr++;
+                    calstk[stkptr] = _programBytePair()[0];
+                    break;
+                case 0x24: // SPOP
+                    popStack();
+                    pcounter++;
+                    break;
+                case 0x25: // SPUS
+                    pushStack(_program16BitAddress());
+                    pcounter += 3;
+                    break;
+                case 0x26: // SPEE
+                    // Write 16 bit value from stack to 8 bit over 2 memory addresses.
+                    peekStack(_program16BitAddress(), mspptr);
+                    pcounter += 3;
+                    break;
                 case 63:
                     status = 0x7e;
                     break;
@@ -160,7 +183,6 @@ public class J8P {
         mspptr = 0x0;
         status = 0x0;
         pcounter = 0;
-        plength  = 0;
     }
 
     // INSTRUCTIONS
@@ -215,15 +237,14 @@ public class J8P {
     // "J8P#_loadRegister(int register, byte value)"
     public static void loadRegister(int register) {
         _loadRegister(register, _programBytePair()[0]);
-
-        pcounter += 2;
+        pcounter += 4;
     }
 
     // Pushes a Register to a specific place in Memory
     // Uses internal function "J8P#_pushRegister(int register, short address)"
     public static void pushRegister(int register) {
         _pushRegister(register, _program16BitAddress());
-        pcounter += 2;
+        pcounter += 3;
     }
 
     // These math instructions grab their values in the same way
@@ -247,8 +268,6 @@ public class J8P {
 
     public static void div() {
         byte[] vs = _programBytePair();
-
-        System.out.println(Arrays.toString(vs));
 
         // Divide by 0 check.
         if (vs[1] == 0) {
@@ -341,5 +360,39 @@ public class J8P {
     public static void _pushRegister(int register, int adress) {
         byte[] regLookup = new byte[] {accumulator, indexes[0], indexes[1], indexes[2], indexes[3], indexes[4], indexes[5], indexes[6], indexes[7], mspptr, status};
         Bus.operate(adress, regLookup[register], true, mspptr);
+    }
+
+    // STACK FUNCTIONS //
+    // Pushes a value onto the stack and increments the pointer to that value.
+    public static void pushStack(short value) {
+        _makePointerValid();
+        stkptr++;
+        calstk[stkptr-1] = value;
+    }
+
+    // Pops a singular item of the stack. Value is not saved anywhere.
+    public static void popStack() {
+        calstk[stkptr-1] = 0;
+        stkptr--;
+    }
+
+    // Peeks at a value on the Call Stack and puts the value
+    // at the specified memloc (memory location)
+    public static void peekStack(short address, byte memloc) {
+        _makePointerValid();
+        Bus.operate(address, (byte) (calstk[stkptr-1] & 0xff), true, memloc);
+        Bus.operate(address+1, (byte) ((calstk[stkptr-1] >> 8) & 0xff), true, memloc);
+    }
+
+    // Utility function for making the stack pointer valid.
+    // If the stack pointer value exceeds the range of 0-1023
+    // it is set back to zero.
+    // This operation also re-intialises the stack if it is full
+    // Called before any operation is done on the stack.
+    private static void _makePointerValid() {
+        if (stkptr > 1023) {
+            stkptr = 0;
+            calstk = new short[1024];
+        }
     }
 }
