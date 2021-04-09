@@ -1,7 +1,5 @@
 package de.felixeckert.j8p;
 
-import java.util.Arrays;
-
 public class J8P {
     // REGISTERS
     public static byte accumulator   = 0x0;     // ALU Operation Results, also the results of compare
